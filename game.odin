@@ -14,7 +14,7 @@ package game
 import "core:math/linalg"
 import "core:fmt"
 import rl "vendor:raylib"
-//import "core:math/noise"
+import "core:math/noise"
 
 _ :: fmt
 
@@ -408,24 +408,35 @@ draw :: proc() {
 
   				d := linalg.dot(n, Vec2{0, 1})
 
-  				r := remap(d, -1, 1, 0, 1)
+  				r1 := remap(d, -1, 1, 0, 1)
 
-  				r = r
+  				n2d := remap(noise.noise_2d(0, {f64(p.x), f64(p.y)}/6), -1, 1, 0, 1)
+  				n22d := remap(noise.noise_2d(0, {f64(p.x), f64(p.y)}/10), -1, 1, 0, 1)
 
-  				r = remap(r, 0.2, 0.8, 2, 14)
+  				r := remap(r1, 0.2, 0.8, 4, 14)
 
 				if s > 0 && s < r {
 					c = ColorMud
 
-					if s > r * 0.75 {
-						c = ColorDark
-					}
-
-					if s < r * 0.2 {
-						c = ColorDarkGrass
+					if s > r * 0.5 {
+						if s > r * 0.75 || n2d*(remap(14-s, 0, 10, 0, 1)) < 0.2 {
+							c = ColorDark
+						}
 					}
 
 					rl.DrawPixelV(p, c)
+				}
+
+				if s > -2 && s < 5*remap(d, 0, 1, 0.2, 1) {
+					if (s > -1 && s < 2) || n22d*(remap(14-s, 0, 10, 0, 1)) > 0.8 {
+						rl.DrawPixelV(p, ColorDarkGrass)
+					}
+				}
+
+				if s > r * 0.9 && s < r + 1 {
+					if remap(d, 0, 1, 0, 0.5) > 0 && n22d*(remap(s, 0, 14, 0, 1)) < 0.5 {
+						rl.DrawPixelV(p, ColorDarkGrass)
+					}
 				}
 			}
 		}
