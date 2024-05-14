@@ -14,6 +14,7 @@ package game
 import "core:math/linalg"
 import "core:fmt"
 import rl "vendor:raylib"
+//import "core:math/noise"
 
 _ :: fmt
 
@@ -32,14 +33,13 @@ FillPoint :: struct {
 
 GameMemory :: struct {	
 	camera_pos: Vec2,
-	grid: [GridWidth][GridHeight]GroundType,
-	mode: GroundType,
+	sdf: [GridWidth][GridHeight]f32,
 	radius: f32,
 
-	show_result: bool,
-	result: [GridWidth][GridHeight]rl.Color,
+	//show_result: bool,
+	//result: [GridWidth][GridHeight]rl.Color,
 
-	visited: [GridWidth][GridHeight]bool,
+	//visited: [GridWidth][GridHeight]bool,
 }
 
 GroundType :: enum {
@@ -84,7 +84,7 @@ brush_pos :: proc() -> Vec2 {
 	return rl.GetScreenToWorld2D(mp, c)
 }
 
-calculate :: proc() {
+/*calculate :: proc() {
 	for x in 0..<GridWidth {
 		for y in 0..<GridHeight {
 			g_mem.result[x][y] = rl.BLANK
@@ -285,8 +285,8 @@ calculate :: proc() {
 
 		if d < 0 {
 			r = 4
-		} else if d < 0.90 {
-			r = 6
+		} else if d < 0.9 {
+			r = 8
 		} else {
 			r = 14
 		}
@@ -299,13 +299,15 @@ calculate :: proc() {
 
 				c := ColorMud
 
-				if r-linalg.length(p-bp) < 2 {
-					//c = ColorDark
+				dd := linalg.projection(p-bp, fp.dir)
+
+				if linalg.length(dd) > r * 0.8 {
+					c = ColorDark
 				}
 
 				pi := vec2i_from_floored_vec2(p)
 
-				if g_mem.grid[pi.x][pi.y] == fp.consume && g_mem.result[pi.x][pi.y] == ColorGrass {
+				if g_mem.grid[pi.x][pi.y] == fp.consume {
 					g_mem.result[pi.x][pi.y] = c
 				}
 			}
@@ -314,22 +316,24 @@ calculate :: proc() {
 
 				c := ColorMud
 
-				if r-linalg.length(p-bp) < 2 {
-					//c = ColorDark
+				dd := linalg.projection(p-bp, fp.dir)
+
+				if linalg.length(dd) > r * 0.8 {
+					c = ColorDark
 				}
 
 				pi := vec2i_from_floored_vec2(p)
 
-				if g_mem.grid[pi.x][pi.y] == fp.consume && g_mem.result[pi.x][pi.y] == ColorGrass {
+				if g_mem.grid[pi.x][pi.y] == fp.consume {
 					g_mem.result[pi.x][pi.y] = c
 				}
 			}
 		}
 	}
-}
+}*/
  
 update :: proc() {
-	g_mem.visited = {}
+	//g_mem.visited = {}
 	input: Vec2
 
 	if rl.IsKeyDown(.W) {
@@ -349,72 +353,154 @@ update :: proc() {
 	g_mem.camera_pos += input * rl.GetFrameTime() * 100
 
 	if rl.IsKeyPressed(.SPACE) {
-		if g_mem.show_result {
+		/*if g_mem.show_result {
 			g_mem.show_result = false
 		} else {
 			
 			g_mem.show_result = true
-		}
+		}*/
 	}
+}
+
+get_sdf_val :: proc(p: Vec2) -> f32 {
+	return g_mem.sdf[int(clamp(p.x, 0, GridWidth-1))][int(clamp(p.y, 0, GridHeight-1))]
+}
+
+sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
+	return linalg.normalize0(Vec2{
+		get_sdf_val(p + {1, 0}) - get_sdf_val(p - {1, 0}),
+		get_sdf_val(p + {0, 1}) - get_sdf_val(p - {0, 1}),
+	})
 }
 
 draw :: proc() {
 	rl.BeginDrawing()
-	rl.ClearBackground({74, 103, 181, 255})
 	
 	rl.BeginMode2D(game_camera())
 
 	if rl.IsKeyDown(.SPACE) {
+		rl.ClearBackground(ColorGrass)
 		for x in 0..<GridWidth {
 			for y in 0..<GridHeight {
-				g := g_mem.grid[x][y]
-				rl.DrawPixelV({f32(x), f32(y)}, g == .None ? rl.BLANK : mode_color[g])
+				s := g_mem.sdf[x][y]
+				c: Color
+
+				if s > 0 {
+					c = {0, u8(s*7.9), 0, 255}
+				} else {
+					c = {u8(s*7.9), 0, 0, 255}
+				}
+
+				rl.DrawPixelV({f32(x), f32(y)}, c)
 			}
 		}
 	} else {
+		rl.ClearBackground(ColorGrass)
 		for x in 0..<GridWidth {
 			for y in 0..<GridHeight {
-				rl.DrawPixelV({f32(x), f32(y)}, g_mem.result[x][y])
+				s := g_mem.sdf[x][y]
+
+				c := ColorGrass
+
+				p := vec2_from_int(x, y)
+  				n := sdf_calculate_normal(p)
+  				//rl.DrawLineV(p, p + n, rl.RED)
+
+  				d := linalg.dot(n, Vec2{0, 1})
+
+  				r := remap(d, -1, 1, 0, 1)
+
+  				r = r
+
+  				r = remap(r, 0.2, 0.8, 2, 14)
+
+				if s > 0 && s < r {
+					c = ColorMud
+
+					if s > r * 0.75 {
+						c = ColorDark
+					}
+
+					if s < r * 0.2 {
+						c = ColorDarkGrass
+					}
+
+					rl.DrawPixelV(p, c)
+				}
 			}
 		}
 	}
-	
+
 	bp := vec2_floor(brush_pos())
 
 	r := g_mem.radius
 
 	g_mem.radius += rl.GetMouseWheelMove()
 
-	k := rl.GetKeyPressed()
+/*	k := rl.GetKeyPressed()
 
 	if k >= .ZERO && k <= .NINE {
 		g_mem.mode = GroundType(k - .ZERO)
+	}
+
+	changed := false*/
+
+	sdf_circle :: proc(p: Vec2, r: f32) -> f32 {
+		return linalg.length(p)-r
+	}
+
+	smin :: proc(a, b, k: f32) -> f32 {
+		h := max(k - abs(a - b), 0.0) / k
+		return min(a, b) - h * h * h * k / 6.0
+	}
+
+	smax :: proc(a, b, k: f32) -> f32 {
+		k := k * 1.4
+		h := max(k - abs(a - b), 0.0)
+		return max(a, b) + h * h * h / (6.0 * k * k)
+	}
+
+	if rl.IsMouseButtonDown(.LEFT) {
+		for x in 0..<GridWidth {
+			for y in 0..<GridHeight {
+				g_mem.sdf[x][y] = smin(g_mem.sdf[x][y], sdf_circle(vec2_from_int(x,y) - bp, r), 0.5)
+			}
+		}
+	}
+
+	if rl.IsMouseButtonDown(.RIGHT) {
+		for x in 0..<GridWidth {
+			for y in 0..<GridHeight {
+				g_mem.sdf[x][y] = smax(g_mem.sdf[x][y], -sdf_circle(vec2_from_int(x,y) - bp, r), 0.5)
+			}
+		}
 	}
 
 	for i := bp.y-r; i <= bp.y+r; i+=1 {
 		for j := bp.x; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j-=1 {
 			p := Vec2{j, i}
 			if r-linalg.length(p-bp) < 2 {
-				rl.DrawPixelV({j, i}, mode_color[g_mem.mode])
+				rl.DrawPixelV({j, i}, rl.WHITE)
 			}
 
-			if rl.IsMouseButtonDown(.LEFT) && j >= 0 && j < GridWidth && i >= 0 && i < GridHeight {
-				g_mem.grid[int(j)][int(i)] = g_mem.mode
+			if rl.IsMouseButtonDown(.RIGHT) && j >= 0 && j < GridWidth - 1 && i >= 0 && i < GridHeight - 1 {
+			//	g_mem.sdf[int(j)][int(i)] = 32
 			}
 		}
 		for j := bp.x+1; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j+=1 {
 			p := Vec2{j, i}
 			if r-linalg.length(p-bp) < 2 {
-				rl.DrawPixelV({j, i}, mode_color[g_mem.mode])
+				rl.DrawPixelV({j, i}, rl.WHITE)
 			}
-
-			if rl.IsMouseButtonDown(.LEFT) && j >= 0 && j < GridWidth && i >= 0 && i < GridHeight {
-				g_mem.grid[int(j)][int(i)] = g_mem.mode
+			if rl.IsMouseButtonDown(.RIGHT) && j >= 0 && j < GridWidth - 1 && i >= 0 && i < GridHeight - 1 {
+				//g_mem.sdf[int(j)][int(i)] = 32
 			}
 		}
 	}
 
-	calculate()
+//	if changed {
+		//calculate()
+//	}
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -446,6 +532,12 @@ game_init :: proc() {
 	g_mem^ = GameMemory {
 		radius = 10,
 		camera_pos = {320/2, 180/2},
+	}
+
+	for x in 0..<GridWidth {
+		for y in 0..<GridHeight {
+			g_mem.sdf[x][y] = 32
+		}
 	}
 
 	game_hot_reloaded(g_mem)
