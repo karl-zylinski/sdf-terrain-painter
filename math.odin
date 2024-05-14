@@ -17,3 +17,6 @@ vec2i_from_floored_vec2 :: proc(p: Vec2) -> Vec2i {
 	return { int(math.floor(p.x)), int(math.floor(p.y)) }
 }
 
+vec2i_from_f32 :: proc(x: f32, y: f32) -> Vec2i {
+	return { int(math.floor(x)), int(math.floor(y)) }
+}
