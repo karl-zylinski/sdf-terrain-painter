@@ -179,15 +179,10 @@ draw :: proc() {
   					return t || b || l || r
   				}
 
-  				is_slope := prop == .Slope
-  				is_slope_edge := !is_slope && has_nearby_property(x, y, .Slope)
+				is_slope := prop == .Slope
+				is_slope_edge := !is_slope && has_nearby_property(x, y, .Slope)
 
-  				if is_slope {
-  					/*if s > -5 && s < r + 4 {
-  					 	sr := remap(s, -5, 0, 0, 1)
-  						rl.DrawPixelV(p, { 80, 180, 100, u8(f32(255) * sr) })
-  					}*/
-  				} else {
+				if !is_slope {
 					if s > 0 && s < r {
 						c := ColorMud
 
@@ -309,7 +304,7 @@ draw :: proc() {
 				for j := bp.x; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j-=1 {
 					p := Vec2{j, i}
 					if r-linalg.length(p-bp) < 2 {
-						rl.DrawPixelV({j, i}, rl.WHITE)
+						rl.DrawPixelV({j, i}, rl.RED)
 					}
 					if rl.IsMouseButtonDown(.LEFT) {
 						g_mem.properties[int(j)][int(i)] = .Slope
@@ -318,7 +313,7 @@ draw :: proc() {
 				for j := bp.x+1; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j+=1 {
 					p := Vec2{j, i}
 					if r-linalg.length(p-bp) < 2 {
-						rl.DrawPixelV({j, i}, rl.WHITE)
+						rl.DrawPixelV({j, i}, rl.RED)
 					}
 					if rl.IsMouseButtonDown(.LEFT) {
 						g_mem.properties[int(j)][int(i)] = .Slope
