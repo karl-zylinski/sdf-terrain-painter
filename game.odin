@@ -30,7 +30,7 @@ GridProperty :: enum {
 GameMemory :: struct {	
 	camera_pos: Vec2,
 	sdf: [GridWidth][GridHeight]f32,
-	sdf_ramps: [GridWidth][GridHeight]f32,
+	properties: [GridWidth][GridHeight]GridProperty,
 	radius: f32,
 	brush: Brush,
 }
@@ -38,6 +38,7 @@ GameMemory :: struct {
 Brush :: enum {
 	Circle,
 	Square,
+	Slope,
 }
 
 g_mem: ^GameMemory
@@ -96,6 +97,10 @@ update :: proc() {
 	if rl.IsKeyPressed(.TWO) {
 		g_mem.brush = .Square
 	}
+
+	if rl.IsKeyPressed(.THREE) {
+		g_mem.brush = .Slope
+	}
 }
 
 get_sdf_val :: proc(p: Vec2) -> f32 {
@@ -135,12 +140,12 @@ draw :: proc() {
 				}
 
 				rl.DrawPixelV({f32(x), f32(y)}, c)
-				r := g_mem.sdf_ramps[x][y]
 
-				if r > 0 {
-					c = {0, 0, u8(r*7.9), 255}
-				} else {
-					c = {u8(r*7.9), u8(r*7.9), 0, 255}
+				switch g_mem.properties[x][y] {
+					case .None:
+
+					case .Slope:
+						rl.DrawPixelV({f32(x), f32(y)}, {255, 0, 0, 100})
 				}
 			}
 		}
@@ -149,6 +154,7 @@ draw :: proc() {
 		for x in 0..<GridWidth {
 			for y in 0..<GridHeight {
 				s := g_mem.sdf[x][y]
+				prop := g_mem.properties[x][y]
 
 				p := vec2_from_int(x, y)
   				n := sdf_calculate_normal(p)
@@ -163,27 +169,55 @@ draw :: proc() {
 
   				r := remap(r1, 0.2, 0.8, 2.5, 14)
 
-				if s > 0 && s < r {
-					c := ColorMud
 
-					if s > r * 0.5 {
-						if r > 5 && (s > r * 0.75 || n2d*(remap(14-s, 0, 10, 0, 1)) < 0.2){
+  				has_nearby_property :: proc(x, y: int, p: GridProperty) -> bool {
+  					t := g_mem.properties[x][max(y-2, 0)] == .Slope
+  					b := g_mem.properties[x][min(y+2, GridHeight - 1)] == .Slope
+  					l := g_mem.properties[max(x-2, 0)][y] == .Slope
+  					r := g_mem.properties[min(x+2, GridWidth-1)][y] == .Slope
+
+  					return t || b || l || r
+  				}
+
+  				is_slope := prop == .Slope
+  				is_slope_edge := !is_slope && has_nearby_property(x, y, .Slope)
+
+  				if is_slope {
+  					/*if s > -5 && s < r + 4 {
+  					 	sr := remap(s, -5, 0, 0, 1)
+  						rl.DrawPixelV(p, { 80, 180, 100, u8(f32(255) * sr) })
+  					}*/
+  				} else {
+					if s > 0 && s < r {
+						c := ColorMud
+
+						if is_slope_edge {
 							c = ColorDark
+
+							if n2d*(remap(s, 0, 14, 0, 1)) > 0.3 {
+								c = ColorDarkGrass
+							}
+						} else {
+							if s > r * 0.5 {
+								if r > 5 && (s > r * 0.75 || n2d*(remap(14-s, 0, 10, 0, 1)) < 0.2){
+									c = ColorDark
+								}
+							}
+						}
+
+						rl.DrawPixelV(p, c)
+					}
+
+					if s > -2 && s < 5*remap(d, 0, 1, 0.2, 1) {
+						if (s > -1 && s < 2) || n22d*(remap(14-s, 0, 10, 0, 1)) > 0.8 {
+							rl.DrawPixelV(p, ColorDarkGrass)
 						}
 					}
 
-					rl.DrawPixelV(p, c)
-				}
-
-				if s > -2 && s < 5*remap(d, 0, 1, 0.2, 1) {
-					if (s > -1 && s < 2) || n22d*(remap(14-s, 0, 10, 0, 1)) > 0.8 {
-						rl.DrawPixelV(p, ColorDarkGrass)
-					}
-				}
-
-				if s > r * 0.9 && s < r + 1 {
-					if remap(d, 0, 1, 0, 0.5) > 0 && n22d*(remap(s, 0, 14, 0, 1)) < 0.5 {
-						rl.DrawPixelV(p, ColorDarkGrass)
+					if s > r * 0.9 && s < r + 1 {
+						if remap(d, 0, 1, 0, 0.5) > 0 && n22d*(remap(s, 0, 14, 0, 1)) < 0.5 {
+							rl.DrawPixelV(p, ColorDarkGrass)
+						}
 					}
 				}
 			}
@@ -213,8 +247,6 @@ draw :: proc() {
 		h := max(k - abs(a - b), 0.0)
 		return max(a, b) + h * h * h / (6.0 * k * k)
 	}
-
-	//sdf := rl.IsKeyDown(.R) ? &g_mem.sdf_ramps : &g_mem.sdf
 
 	switch g_mem.brush {
 		case .Circle:
@@ -269,6 +301,27 @@ draw :: proc() {
 				for x in 0..<GridWidth {
 					for y in 0..<GridHeight {
 						g_mem.sdf[x][y] = clamp(smax(g_mem.sdf[x][y], -sdf_box(vec2_from_int(x,y) - bp, {r, r}),1), -32, 32)
+					}
+				}
+			}
+		case .Slope:
+			for i := bp.y-r; i <= bp.y+r; i+=1 {
+				for j := bp.x; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j-=1 {
+					p := Vec2{j, i}
+					if r-linalg.length(p-bp) < 2 {
+						rl.DrawPixelV({j, i}, rl.WHITE)
+					}
+					if rl.IsMouseButtonDown(.LEFT) {
+						g_mem.properties[int(j)][int(i)] = .Slope
+					}
+				}
+				for j := bp.x+1; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j+=1 {
+					p := Vec2{j, i}
+					if r-linalg.length(p-bp) < 2 {
+						rl.DrawPixelV({j, i}, rl.WHITE)
+					}
+					if rl.IsMouseButtonDown(.LEFT) {
+						g_mem.properties[int(j)][int(i)] = .Slope
 					}
 				}
 			}
