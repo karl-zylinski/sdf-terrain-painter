@@ -71,6 +71,24 @@ brush_pos :: proc() -> Vec2 {
 	return rl.GetScreenToWorld2D(mp, c)
 }
 
+get_sdf_val :: proc(p: Vec2) -> f32 {
+	return g_mem.sdf[int(clamp(p.x, 0, GridWidth-1))][int(clamp(p.y, 0, GridHeight-1))]
+}
+
+sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
+	s1 := linalg.normalize0(Vec2{
+		get_sdf_val(p + {2, 0}) - get_sdf_val(p - {2, 0}),
+		get_sdf_val(p + {0, 2}) - get_sdf_val(p - {0, 4}),
+	})
+
+	s2 := linalg.normalize0(Vec2{
+		get_sdf_val(p + {4, 0}) - get_sdf_val(p - {4, 0}),
+		get_sdf_val(p + {0, 4}) - get_sdf_val(p - {0, 8}),
+	})
+
+	return (s1 + s2) /2
+}
+
 update :: proc() {
 	input: Vec2
 
@@ -101,27 +119,7 @@ update :: proc() {
 	if rl.IsKeyPressed(.THREE) {
 		g_mem.brush = .Slope
 	}
-}
 
-get_sdf_val :: proc(p: Vec2) -> f32 {
-	return g_mem.sdf[int(clamp(p.x, 0, GridWidth-1))][int(clamp(p.y, 0, GridHeight-1))]
-}
-
-sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
-	s1 := linalg.normalize0(Vec2{
-		get_sdf_val(p + {2, 0}) - get_sdf_val(p - {2, 0}),
-		get_sdf_val(p + {0, 2}) - get_sdf_val(p - {0, 4}),
-	})
-
-	s2 := linalg.normalize0(Vec2{
-		get_sdf_val(p + {4, 0}) - get_sdf_val(p - {4, 0}),
-		get_sdf_val(p + {0, 4}) - get_sdf_val(p - {0, 8}),
-	})
-
-	return (s1 + s2) /2
-}
-
-draw :: proc() {
 	rl.BeginDrawing()
 	
 	rl.BeginMode2D(game_camera())
@@ -333,7 +331,6 @@ draw :: proc() {
 @(export)
 game_update :: proc() -> bool {
 	update()
-	draw()
 
 	return !rl.WindowShouldClose()
 }
