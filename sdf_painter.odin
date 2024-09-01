@@ -1,6 +1,5 @@
-// This is some signed distance field drawing experiments. You can draw hills
-// It's not very performant, and runs on CPU. But the basic ideas are there.
-// Most of the interesting things are in proc `update`
+// This is some signed distance field drawing experiments. You can draw hills.
+// It's very inefficient and runs on CPU. But the basic ideas are there.
 
 package game
 
@@ -25,34 +24,6 @@ ColorGrass :: rl.Color { 100, 200, 100, 255 }
 ColorDarkGrass :: rl.Color { 15, 116, 70, 255 }
 ColorMud :: rl.Color { 156, 79, 79, 255 }
 ColorDark :: rl.Color { 76, 53, 83, 255 }
-
-remap :: proc "contextless" (old_value, old_min, old_max, new_min, new_max: $T) -> (x: T) where intrinsics.type_is_numeric(T), !intrinsics.type_is_array(T) {
-	remapped := math.remap(old_value, old_min, old_max, new_min, new_max)
-	return clamp(remapped, new_min, new_max)
-}
-
-brush_pos :: proc(c: rl.Camera2D) -> Vec2 {
-	mp := rl.GetMousePosition()
-	return rl.GetScreenToWorld2D(mp, c)
-}
-
-get_sdf_val :: proc(p: Vec2) -> f32 {
-	return sdf[int(clamp(p.x, 0, GridWidth-1))][int(clamp(p.y, 0, GridHeight-1))]
-}
-
-sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
-	s1 := linalg.normalize0(Vec2{
-		get_sdf_val(p + {2, 0}) - get_sdf_val(p - {2, 0}),
-		get_sdf_val(p + {0, 2}) - get_sdf_val(p - {0, 4}),
-	})
-
-	s2 := linalg.normalize0(Vec2{
-		get_sdf_val(p + {4, 0}) - get_sdf_val(p - {4, 0}),
-		get_sdf_val(p + {0, 4}) - get_sdf_val(p - {0, 8}),
-	})
-
-	return (s1 + s2) /2
-}
 
 camera_pos: Vec2
 
@@ -253,6 +224,34 @@ update :: proc() {
 	rl.EndMode2D()
 
 	rl.EndDrawing()
+}
+
+get_sdf_val :: proc(p: Vec2) -> f32 {
+	return sdf[int(clamp(p.x, 0, GridWidth-1))][int(clamp(p.y, 0, GridHeight-1))]
+}
+
+sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
+	s1 := linalg.normalize0(Vec2{
+		get_sdf_val(p + {2, 0}) - get_sdf_val(p - {2, 0}),
+		get_sdf_val(p + {0, 2}) - get_sdf_val(p - {0, 4}),
+	})
+
+	s2 := linalg.normalize0(Vec2{
+		get_sdf_val(p + {4, 0}) - get_sdf_val(p - {4, 0}),
+		get_sdf_val(p + {0, 4}) - get_sdf_val(p - {0, 8}),
+	})
+
+	return (s1 + s2) /2
+}
+
+remap :: proc "contextless" (old_value, old_min, old_max, new_min, new_max: $T) -> (x: T) where intrinsics.type_is_numeric(T), !intrinsics.type_is_array(T) {
+	remapped := math.remap(old_value, old_min, old_max, new_min, new_max)
+	return clamp(remapped, new_min, new_max)
+}
+
+brush_pos :: proc(c: rl.Camera2D) -> Vec2 {
+	mp := rl.GetMousePosition()
+	return rl.GetScreenToWorld2D(mp, c)
 }
 
 vec2_from_int :: proc(x: int, y: int) -> Vec2 {
