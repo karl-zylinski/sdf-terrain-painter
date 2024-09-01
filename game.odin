@@ -1,3 +1,9 @@
+// This is some signed distance field drawing experiments. You can draw hills
+// It's not very performant, and runs on CPU. But the basic ideas are there.
+// Most of the interesting things are in proc `update`
+
+// Docs from template:
+//
 // This file is compiled as part of the `odin.dll` file. It contains the
 // procs that `game.exe` will call, such as:
 //
@@ -29,8 +35,14 @@ GridProperty :: enum {
 
 GameMemory :: struct {	
 	camera_pos: Vec2,
+
+	// game_init sets all pixels in SDF to 32 by default
 	sdf: [GridWidth][GridHeight]f32,
+
+	// For some experiments where I tried to add slopes to the SDF
 	properties: [GridWidth][GridHeight]GridProperty,
+
+	// Change with mouse wheel
 	radius: f32,
 	brush: Brush,
 }
@@ -108,6 +120,9 @@ update :: proc() {
 	input = linalg.normalize0(input)
 	g_mem.camera_pos += input * rl.GetFrameTime() * 100
 
+	// Three kinds of brushes. Press 1, 2, 3 to change
+	// The third one (slope) is an experiment where I wanted to add properties
+	// to each pixel and add in slopes somehow
 	if rl.IsKeyPressed(.ONE) {
 		g_mem.brush = .Circle
 	}
@@ -125,6 +140,7 @@ update :: proc() {
 	rl.BeginMode2D(game_camera())
 
 	if rl.IsKeyDown(.SPACE) {
+		// Hold space to see the actual SDF
 		rl.ClearBackground(ColorGrass)
 		for x in 0..<GridWidth {
 			for y in 0..<GridHeight {
@@ -148,6 +164,8 @@ update :: proc() {
 			}
 		}
 	} else {
+		// Draw pretty hills based on SDF
+
 		rl.ClearBackground(ColorGrass)
 		for x in 0..<GridWidth {
 			for y in 0..<GridHeight {
@@ -221,6 +239,7 @@ update :: proc() {
 	r := g_mem.radius
 	g_mem.radius += rl.GetMouseWheelMove()
 
+	// These two procs are the ones that the brushes use to draw into the SDF
 	sdf_circle :: proc(p: Vec2, r: f32) -> f32 {
 		return linalg.length(p)-r
 	}
