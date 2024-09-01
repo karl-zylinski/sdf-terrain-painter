@@ -49,17 +49,6 @@ Brush :: enum {
 
 g_mem: ^GameMemory
 
-game_camera :: proc() -> rl.Camera2D {
-	w := f32(rl.GetScreenWidth())
-	h := f32(rl.GetScreenHeight())
-
-	return {
-		zoom = h/PixelWindowHeight,
-		target = g_mem.camera_pos,
-		offset = { w/2, h/2 },
-	}
-}
-
 ColorGrass :: rl.Color { 100, 200, 100, 255 }
 ColorDarkGrass :: rl.Color { 15, 116, 70, 255 }
 ColorMud :: rl.Color { 156, 79, 79, 255 }
@@ -106,24 +95,6 @@ main :: proc() {
 }
 
 update :: proc() {
-	input: Vec2
-
-	if rl.IsKeyDown(.W) {
-		input.y -= 1
-	}
-	if rl.IsKeyDown(.S) {
-		input.y += 1
-	}
-	if rl.IsKeyDown(.A) {
-		input.x -= 1
-	}
-	if rl.IsKeyDown(.D) {
-		input.x += 1
-	}
-
-	input = linalg.normalize0(input)
-	g_mem.camera_pos += input * rl.GetFrameTime() * 100
-
 	// Circle and square brush. Press 1 and 2 to change.
 	if rl.IsKeyPressed(.ONE) {
 		g_mem.brush = .Circle
@@ -135,7 +106,10 @@ update :: proc() {
 
 	rl.BeginDrawing()
 	
-	camera := game_camera()
+	camera := rl.Camera2D {
+		zoom = f32(rl.GetScreenHeight())/PixelWindowHeight,
+	}
+
 	rl.BeginMode2D(camera)
 
 	if rl.IsKeyDown(.SPACE) {
@@ -313,7 +287,6 @@ game_init :: proc() {
 
 	g_mem^ = GameMemory {
 		radius = 10,
-		camera_pos = {320/2, 180/2},
 	}
 
 	for x in 0..<GridWidth {
