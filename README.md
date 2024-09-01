@@ -1,3 +1,7 @@
+By Karl Zylinski, http://zylinski.se
+
+Support me at https://www.patreon.com/karl_zylinski
+
 This is a prototype of painting terrain using Signed Distance Fields for 2D top down games.
 
 It looks like this:
