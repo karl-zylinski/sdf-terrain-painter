@@ -2,22 +2,8 @@
 // It's not very performant, and runs on CPU. But the basic ideas are there.
 // Most of the interesting things are in proc `update`
 
-// Docs from template:
-//
-// This file is compiled as part of the `odin.dll` file. It contains the
-// procs that `game.exe` will call, such as:
-//
-// game_init: Sets up the game state
-// game_update: Run once per frame
-// game_shutdown: Shuts down game and frees memory
-// game_memory: Run just before a hot reload, so game.exe has a pointer to the
-//		game's memory.
-// game_hot_reloaded: Run after a hot reload so that the `g_mem` global variable
-//		can be set to whatever pointer it was in the old DLL.
-
 package game
 
-import "core:fmt"
 import "core:math/linalg"
 import "core:math/noise"
 import "base:intrinsics"
@@ -25,29 +11,15 @@ import "core:math"
 import rl "vendor:raylib"
 
 Vec2 :: rl.Vector2
-_ :: fmt
 
 PixelWindowHeight :: 180
 GridWidth :: 320
 GridHeight :: 180
 
-GameMemory :: struct {	
-	camera_pos: Vec2,
-
-	// game_init sets all pixels in SDF to 32 by default
-	sdf: [GridWidth][GridHeight]f32,
-
-	// Change with mouse wheel
-	radius: f32,
-	brush: Brush,
-}
-
 Brush :: enum {
 	Circle,
 	Square,
 }
-
-g_mem: ^GameMemory
 
 ColorGrass :: rl.Color { 100, 200, 100, 255 }
 ColorDarkGrass :: rl.Color { 15, 116, 70, 255 }
@@ -65,7 +37,7 @@ brush_pos :: proc(c: rl.Camera2D) -> Vec2 {
 }
 
 get_sdf_val :: proc(p: Vec2) -> f32 {
-	return g_mem.sdf[int(clamp(p.x, 0, GridWidth-1))][int(clamp(p.y, 0, GridHeight-1))]
+	return sdf[int(clamp(p.x, 0, GridWidth-1))][int(clamp(p.y, 0, GridHeight-1))]
 }
 
 sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
@@ -82,26 +54,44 @@ sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
 	return (s1 + s2) /2
 }
 
+camera_pos: Vec2
+
+// game_init sets all pixels in SDF to 32 by default
+sdf: [GridWidth][GridHeight]f32
+
+// Change with mouse wheel
+radius: f32
+brush: Brush
+
 main :: proc() {
-	game_init_window()
-	game_init()
+	rl.SetConfigFlags({.WINDOW_RESIZABLE})
+	rl.InitWindow(1280, 720, "SDF terrain painter")
+	rl.SetWindowPosition(200, 200)
+	rl.SetTargetFPS(500)
+	
+	radius = 10
+
+	for x in 0..<GridWidth {
+		for y in 0..<GridHeight {
+			sdf[x][y] = 32
+		}
+	}
 
 	for !rl.WindowShouldClose() {
 		update()
 	}
 
-	game_shutdown()
-	game_shutdown_window()
+	rl.CloseWindow()
 }
 
 update :: proc() {
 	// Circle and square brush. Press 1 and 2 to change.
 	if rl.IsKeyPressed(.ONE) {
-		g_mem.brush = .Circle
+		brush = .Circle
 	}
 
 	if rl.IsKeyPressed(.TWO) {
-		g_mem.brush = .Square
+		brush = .Square
 	}
 
 	rl.BeginDrawing()
@@ -117,7 +107,7 @@ update :: proc() {
 		rl.ClearBackground(ColorGrass)
 		for x in 0..<GridWidth {
 			for y in 0..<GridHeight {
-				s := g_mem.sdf[x][y]
+				s := sdf[x][y]
 				c: rl.Color
 
 				if s > 0 {
@@ -135,7 +125,7 @@ update :: proc() {
 		rl.ClearBackground(ColorGrass)
 		for x in 0..<GridWidth {
 			for y in 0..<GridHeight {
-				s := g_mem.sdf[x][y]
+				s := sdf[x][y]
 
 				p := vec2_from_int(x, y)
   				n := sdf_calculate_normal(p)
@@ -178,8 +168,8 @@ update :: proc() {
 	}
 
 	bp := vec2_floor(brush_pos(camera))
-	r := g_mem.radius
-	g_mem.radius += rl.GetMouseWheelMove()
+	r := radius
+	radius += rl.GetMouseWheelMove()
 
 	// These two procs are the ones that the brushes use to draw into the SDF
 	sdf_circle :: proc(p: Vec2, r: f32) -> f32 {
@@ -202,7 +192,7 @@ update :: proc() {
 		return max(a, b) + h * h * h / (6.0 * k * k)
 	}
 
-	switch g_mem.brush {
+	switch brush {
 	case .Circle:
 		for i := bp.y-r; i <= bp.y+r; i+=1 {
 			for j := bp.x; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j-=1 {
@@ -222,7 +212,7 @@ update :: proc() {
 		if rl.IsMouseButtonDown(.LEFT) {
 			for x in 0..<GridWidth {
 				for y in 0..<GridHeight {
-					g_mem.sdf[x][y] = clamp(smin(g_mem.sdf[x][y], sdf_circle(vec2_from_int(x,y) - bp, r), 1), -32, 32)
+					sdf[x][y] = clamp(smin(sdf[x][y], sdf_circle(vec2_from_int(x,y) - bp, r), 1), -32, 32)
 				}
 			}
 		}
@@ -230,7 +220,7 @@ update :: proc() {
 		if rl.IsMouseButtonDown(.RIGHT) {
 			for x in 0..<GridWidth {
 				for y in 0..<GridHeight {
-					g_mem.sdf[x][y] = clamp(smax(g_mem.sdf[x][y], -sdf_circle(vec2_from_int(x,y) - bp, r),1), -32, 32)
+					sdf[x][y] = clamp(smax(sdf[x][y], -sdf_circle(vec2_from_int(x,y) - bp, r),1), -32, 32)
 				}
 			}
 		}
@@ -246,7 +236,7 @@ update :: proc() {
 		if rl.IsMouseButtonDown(.LEFT) {
 			for x in 0..<GridWidth {
 				for y in 0..<GridHeight {
-					g_mem.sdf[x][y] = clamp(smin(g_mem.sdf[x][y], sdf_box(vec2_from_int(x,y) - bp, {r, r}), 1), -32, 32)
+					sdf[x][y] = clamp(smin(sdf[x][y], sdf_box(vec2_from_int(x,y) - bp, {r, r}), 1), -32, 32)
 				}
 			}
 		}
@@ -254,7 +244,7 @@ update :: proc() {
 		if rl.IsMouseButtonDown(.RIGHT) {
 			for x in 0..<GridWidth {
 				for y in 0..<GridHeight {
-					g_mem.sdf[x][y] = clamp(smax(g_mem.sdf[x][y], -sdf_box(vec2_from_int(x,y) - bp, {r, r}),1), -32, 32)
+					sdf[x][y] = clamp(smax(sdf[x][y], -sdf_box(vec2_from_int(x,y) - bp, {r, r}),1), -32, 32)
 				}
 			}
 		}
@@ -271,64 +261,4 @@ vec2_from_int :: proc(x: int, y: int) -> Vec2 {
 
 vec2_floor :: proc(p: Vec2) -> Vec2 {
 	return { math.floor(p.x), math.floor(p.y) }
-}
-
-@(export)
-game_init_window :: proc() {
-	rl.SetConfigFlags({.WINDOW_RESIZABLE})
-	rl.InitWindow(1280, 720, "Pixel Painter!")
-	rl.SetWindowPosition(200, 200)
-	rl.SetTargetFPS(500)
-}
-
-@(export)
-game_init :: proc() {
-	g_mem = new(GameMemory)
-
-	g_mem^ = GameMemory {
-		radius = 10,
-	}
-
-	for x in 0..<GridWidth {
-		for y in 0..<GridHeight {
-			g_mem.sdf[x][y] = 32
-		}
-	}
-
-	game_hot_reloaded(g_mem)
-}
-
-@(export)
-game_shutdown :: proc() { 
-	free(g_mem)
-}
-
-@(export)
-game_shutdown_window :: proc() {
-	rl.CloseWindow()
-}
-
-@(export)
-game_memory :: proc() -> rawptr {
-	return g_mem
-}
-
-@(export)
-game_memory_size :: proc() -> int {
-	return size_of(GameMemory)
-}
-
-@(export)
-game_hot_reloaded :: proc(mem: rawptr) {
-	g_mem = (^GameMemory)(mem)
-}
-
-@(export)
-game_force_reload :: proc() -> bool {
-	return rl.IsKeyPressed(.F5)
-}
-
-@(export)
-game_force_restart :: proc() -> bool {
-	return rl.IsKeyPressed(.F6)
 }
