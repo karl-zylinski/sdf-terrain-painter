@@ -10,6 +10,7 @@
 		{
 			"file_regex": "^(.+)\\(([0-9]+):([0-9]+)\\) (.+)$",
 			"name": "SDF terrain painter",
+			"working_dir": "$project_oath",
 			"shell_cmd": "odin run . -strict-style -vet-unused -vet-using-stmt -vet-using-param -vet-style -vet-semicolon -debug",
 		}
 	],
