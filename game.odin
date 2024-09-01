@@ -20,8 +20,11 @@ package game
 import "core:fmt"
 import "core:math/linalg"
 import "core:math/noise"
+import "base:intrinsics"
+import "core:math"
 import rl "vendor:raylib"
 
+Vec2 :: rl.Vector2
 _ :: fmt
 
 PixelWindowHeight :: 180
@@ -72,10 +75,15 @@ ui_camera :: proc() -> rl.Camera2D {
 	}
 }
 
-ColorGrass :: Color { 100, 200, 100, 255 }
-ColorDarkGrass :: Color { 15, 116, 70, 255 }
-ColorMud :: Color { 156, 79, 79, 255 }
-ColorDark :: Color { 76, 53, 83, 255 }
+ColorGrass :: rl.Color { 100, 200, 100, 255 }
+ColorDarkGrass :: rl.Color { 15, 116, 70, 255 }
+ColorMud :: rl.Color { 156, 79, 79, 255 }
+ColorDark :: rl.Color { 76, 53, 83, 255 }
+
+remap :: proc "contextless" (old_value, old_min, old_max, new_min, new_max: $T) -> (x: T) where intrinsics.type_is_numeric(T), !intrinsics.type_is_array(T) {
+	remapped := math.remap(old_value, old_min, old_max, new_min, new_max)
+	return clamp(remapped, new_min, new_max)
+}
 
 brush_pos :: proc() -> Vec2 {
 	c := game_camera()
@@ -145,7 +153,7 @@ update :: proc() {
 		for x in 0..<GridWidth {
 			for y in 0..<GridHeight {
 				s := g_mem.sdf[x][y]
-				c: Color
+				c: rl.Color
 
 				if s > 0 {
 					c = {0, u8(s*7.9), 0, 255}
@@ -293,7 +301,7 @@ update :: proc() {
 			}
 		}
 	case .Square:
-		rect := Rect{
+		rect := rl.Rectangle {
 			bp.x - r,
 			bp.y - r,
 			r*2,
@@ -345,6 +353,14 @@ update :: proc() {
 	rl.EndMode2D()
 
 	rl.EndDrawing()
+}
+
+vec2_from_int :: proc(x: int, y: int) -> Vec2 {
+	return { f32(x), f32(y) }
+}
+
+vec2_floor :: proc(p: Vec2) -> Vec2 {
+	return { math.floor(p.x), math.floor(p.y) }
 }
 
 @(export)
