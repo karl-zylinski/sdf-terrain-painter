@@ -232,6 +232,9 @@ get_sdf_val :: proc(p: Vec2) -> f32 {
 	return sdf[int(clamp(p.x, 0, GridWidth-1))][int(clamp(p.y, 0, GridHeight-1))]
 }
 
+// Calculate normal of surface based on nearby SDF values. This is essentially the gradient
+// at a point, but as you see I skew it to pick points further away downward. That was an 
+// attempt to make hills that are near each other in the Y direction look better.
 sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
 	s1 := linalg.normalize0(Vec2{
 		get_sdf_val(p + {2, 0}) - get_sdf_val(p - {2, 0}),
