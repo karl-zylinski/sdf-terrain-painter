@@ -69,12 +69,6 @@ game_camera :: proc() -> rl.Camera2D {
 	}
 }
 
-ui_camera :: proc() -> rl.Camera2D {
-	return {
-		zoom = f32(rl.GetScreenHeight())/PixelWindowHeight,
-	}
-}
-
 ColorGrass :: rl.Color { 100, 200, 100, 255 }
 ColorDarkGrass :: rl.Color { 15, 116, 70, 255 }
 ColorMud :: rl.Color { 156, 79, 79, 255 }
@@ -85,8 +79,7 @@ remap :: proc "contextless" (old_value, old_min, old_max, new_min, new_max: $T) 
 	return clamp(remapped, new_min, new_max)
 }
 
-brush_pos :: proc() -> Vec2 {
-	c := game_camera()
+brush_pos :: proc(c: rl.Camera2D) -> Vec2 {
 	mp := rl.GetMousePosition()
 	return rl.GetScreenToWorld2D(mp, c)
 }
@@ -107,6 +100,18 @@ sdf_calculate_normal :: proc(p: Vec2) -> Vec2 {
 	})
 
 	return (s1 + s2) /2
+}
+
+main :: proc() {
+	game_init_window()
+	game_init()
+
+	for !rl.WindowShouldClose() {
+		update()
+	}
+
+	game_shutdown()
+	game_shutdown_window()
 }
 
 update :: proc() {
@@ -145,7 +150,8 @@ update :: proc() {
 
 	rl.BeginDrawing()
 	
-	rl.BeginMode2D(game_camera())
+	camera := game_camera()
+	rl.BeginMode2D(camera)
 
 	if rl.IsKeyDown(.SPACE) {
 		// Hold space to see the actual SDF
@@ -243,7 +249,7 @@ update :: proc() {
 		}
 	}
 
-	bp := vec2_floor(brush_pos())
+	bp := vec2_floor(brush_pos(camera))
 	r := g_mem.radius
 	g_mem.radius += rl.GetMouseWheelMove()
 
@@ -349,9 +355,6 @@ update :: proc() {
 
 	rl.EndMode2D()
 
-	rl.BeginMode2D(ui_camera())
-	rl.EndMode2D()
-
 	rl.EndDrawing()
 }
 
@@ -361,13 +364,6 @@ vec2_from_int :: proc(x: int, y: int) -> Vec2 {
 
 vec2_floor :: proc(p: Vec2) -> Vec2 {
 	return { math.floor(p.x), math.floor(p.y) }
-}
-
-@(export)
-game_update :: proc() -> bool {
-	update()
-
-	return !rl.WindowShouldClose()
 }
 
 @(export)

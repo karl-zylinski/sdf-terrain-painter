@@ -4,27 +4,13 @@
 		{
 			"path": ".",
 		},
-		{
-			"path": "c:\\Odin\\core"
-		},
 	],
 	"build_systems":
 	[
 		{
 			"file_regex": "^(.+)\\(([0-9]+):([0-9]+)\\) (.+)$",
-			"name": "Game template",
-			"windows": {
-				"working_dir": "$project_path",
-				"shell_cmd": "build_hot_reload.bat && start game.exe",
-			},
-			"osx": {
-				"working_dir": "$project_path",
-				"shell_cmd": "./build_hot_reload.sh && ./game.bin &",
-			},
-			"linux": {
-				"working_dir": "$project_path",
-				"shell_cmd": "./build_hot_reload.sh && ./game.bin &",
-			},
+			"name": "SDF terrain painter",
+			"shell_cmd": "odin run . -strict-style -vet-unused -vet-using-stmt -vet-using-param -vet-style -vet-semicolon -debug",
 		}
 	],
 	"settings":
