@@ -140,10 +140,10 @@ update :: proc() {
 				rl.DrawPixelV({f32(x), f32(y)}, c)
 
 				switch g_mem.properties[x][y] {
-					case .None:
+				case .None:
 
-					case .Slope:
-						rl.DrawPixelV({f32(x), f32(y)}, {255, 0, 0, 100})
+				case .Slope:
+					rl.DrawPixelV({f32(x), f32(y)}, {255, 0, 0, 100})
 				}
 			}
 		}
@@ -158,7 +158,7 @@ update :: proc() {
   				n := sdf_calculate_normal(p)
   				//rl.DrawLineV(p, p + n, rl.RED)
 
-  				d := linalg.dot(n, Vec2{0, 1})
+  				d := n.y
 
   				r1 := remap(d, -1, 1, 0, 1)
 
@@ -242,82 +242,82 @@ update :: proc() {
 	}
 
 	switch g_mem.brush {
-		case .Circle:
-			for i := bp.y-r; i <= bp.y+r; i+=1 {
-				for j := bp.x; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j-=1 {
-					p := Vec2{j, i}
-					if r-linalg.length(p-bp) < 2 {
-						rl.DrawPixelV({j, i}, rl.WHITE)
-					}
-				}
-				for j := bp.x+1; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j+=1 {
-					p := Vec2{j, i}
-					if r-linalg.length(p-bp) < 2 {
-						rl.DrawPixelV({j, i}, rl.WHITE)
-					}
+	case .Circle:
+		for i := bp.y-r; i <= bp.y+r; i+=1 {
+			for j := bp.x; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j-=1 {
+				p := Vec2{j, i}
+				if r-linalg.length(p-bp) < 2 {
+					rl.DrawPixelV({j, i}, rl.WHITE)
 				}
 			}
+			for j := bp.x+1; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j+=1 {
+				p := Vec2{j, i}
+				if r-linalg.length(p-bp) < 2 {
+					rl.DrawPixelV({j, i}, rl.WHITE)
+				}
+			}
+		}
 
-			if rl.IsMouseButtonDown(.LEFT) {
-				for x in 0..<GridWidth {
-					for y in 0..<GridHeight {
-						g_mem.sdf[x][y] = clamp(smin(g_mem.sdf[x][y], sdf_circle(vec2_from_int(x,y) - bp, r), 1), -32, 32)
-					}
+		if rl.IsMouseButtonDown(.LEFT) {
+			for x in 0..<GridWidth {
+				for y in 0..<GridHeight {
+					g_mem.sdf[x][y] = clamp(smin(g_mem.sdf[x][y], sdf_circle(vec2_from_int(x,y) - bp, r), 1), -32, 32)
 				}
 			}
+		}
 
-			if rl.IsMouseButtonDown(.RIGHT) {
-				for x in 0..<GridWidth {
-					for y in 0..<GridHeight {
-						g_mem.sdf[x][y] = clamp(smax(g_mem.sdf[x][y], -sdf_circle(vec2_from_int(x,y) - bp, r),1), -32, 32)
-					}
+		if rl.IsMouseButtonDown(.RIGHT) {
+			for x in 0..<GridWidth {
+				for y in 0..<GridHeight {
+					g_mem.sdf[x][y] = clamp(smax(g_mem.sdf[x][y], -sdf_circle(vec2_from_int(x,y) - bp, r),1), -32, 32)
 				}
 			}
-		case .Square:
-			rect := Rect{
-				bp.x - r,
-				bp.y - r,
-				r*2,
-				r*2,
-			}
-			rl.DrawRectangleLinesEx(rect, 1, rl.WHITE)
-			
-			if rl.IsMouseButtonDown(.LEFT) {
-				for x in 0..<GridWidth {
-					for y in 0..<GridHeight {
-						g_mem.sdf[x][y] = clamp(smin(g_mem.sdf[x][y], sdf_box(vec2_from_int(x,y) - bp, {r, r}), 1), -32, 32)
-					}
+		}
+	case .Square:
+		rect := Rect{
+			bp.x - r,
+			bp.y - r,
+			r*2,
+			r*2,
+		}
+		rl.DrawRectangleLinesEx(rect, 1, rl.WHITE)
+		
+		if rl.IsMouseButtonDown(.LEFT) {
+			for x in 0..<GridWidth {
+				for y in 0..<GridHeight {
+					g_mem.sdf[x][y] = clamp(smin(g_mem.sdf[x][y], sdf_box(vec2_from_int(x,y) - bp, {r, r}), 1), -32, 32)
 				}
 			}
+		}
 
-			if rl.IsMouseButtonDown(.RIGHT) {
-				for x in 0..<GridWidth {
-					for y in 0..<GridHeight {
-						g_mem.sdf[x][y] = clamp(smax(g_mem.sdf[x][y], -sdf_box(vec2_from_int(x,y) - bp, {r, r}),1), -32, 32)
-					}
+		if rl.IsMouseButtonDown(.RIGHT) {
+			for x in 0..<GridWidth {
+				for y in 0..<GridHeight {
+					g_mem.sdf[x][y] = clamp(smax(g_mem.sdf[x][y], -sdf_box(vec2_from_int(x,y) - bp, {r, r}),1), -32, 32)
 				}
 			}
-		case .Slope:
-			for i := bp.y-r; i <= bp.y+r; i+=1 {
-				for j := bp.x; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j-=1 {
-					p := Vec2{j, i}
-					if r-linalg.length(p-bp) < 2 {
-						rl.DrawPixelV({j, i}, rl.RED)
-					}
-					if rl.IsMouseButtonDown(.LEFT) {
-						g_mem.properties[int(j)][int(i)] = .Slope
-					}
+		}
+	case .Slope:
+		for i := bp.y-r; i <= bp.y+r; i+=1 {
+			for j := bp.x; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j-=1 {
+				p := Vec2{j, i}
+				if r-linalg.length(p-bp) < 2 {
+					rl.DrawPixelV({j, i}, rl.RED)
 				}
-				for j := bp.x+1; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j+=1 {
-					p := Vec2{j, i}
-					if r-linalg.length(p-bp) < 2 {
-						rl.DrawPixelV({j, i}, rl.RED)
-					}
-					if rl.IsMouseButtonDown(.LEFT) {
-						g_mem.properties[int(j)][int(i)] = .Slope
-					}
+				if rl.IsMouseButtonDown(.LEFT) {
+					g_mem.properties[int(j)][int(i)] = .Slope
 				}
 			}
+			for j := bp.x+1; (j-bp.x)*(j-bp.x) + (i-bp.y)*(i-bp.y) < r*r; j+=1 {
+				p := Vec2{j, i}
+				if r-linalg.length(p-bp) < 2 {
+					rl.DrawPixelV({j, i}, rl.RED)
+				}
+				if rl.IsMouseButtonDown(.LEFT) {
+					g_mem.properties[int(j)][int(i)] = .Slope
+				}
+			}
+		}
 	}
 
 	rl.EndMode2D()
