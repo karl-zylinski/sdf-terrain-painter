@@ -27,11 +27,13 @@ ColorDark :: rl.Color { 76, 53, 83, 255 }
 
 camera_pos: Vec2
 
-// game_init sets all pixels in SDF to 32 by default
+// All values in this one is set to 32 by default
 sdf: [GridWidth][GridHeight]f32
 
 // Change with mouse wheel
 radius: f32
+
+// Change with keyboard key 1 and 2
 brush: Brush
 
 main :: proc() {
